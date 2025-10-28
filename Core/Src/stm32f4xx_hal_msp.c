@@ -89,29 +89,36 @@ void HAL_MspInit(void)
 void HAL_I2C_MspInit(I2C_HandleTypeDef* hi2c)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
-  if(hi2c->Instance==I2C1)
+  if(hi2c->Instance==I2C2)
   {
-  /* USER CODE BEGIN I2C1_MspInit 0 */
+  /* USER CODE BEGIN I2C2_MspInit 0 */
 
-  /* USER CODE END I2C1_MspInit 0 */
+  /* USER CODE END I2C2_MspInit 0 */
 
     __HAL_RCC_GPIOB_CLK_ENABLE();
-    /**I2C1 GPIO Configuration
-    PB6     ------> I2C1_SCL
-    PB9     ------> I2C1_SDA
+    /**I2C2 GPIO Configuration
+    PB10     ------> I2C2_SCL
+    PB3     ------> I2C2_SDA
     */
-    GPIO_InitStruct.Pin = Audio_SCL_Pin|Audio_SDA_Pin;
+    GPIO_InitStruct.Pin = GPIO_PIN_10;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
     GPIO_InitStruct.Pull = GPIO_PULLUP;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-    GPIO_InitStruct.Alternate = GPIO_AF4_I2C1;
+    GPIO_InitStruct.Alternate = GPIO_AF4_I2C2;
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+    GPIO_InitStruct.Pin = GPIO_PIN_3;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    GPIO_InitStruct.Alternate = GPIO_AF9_I2C2;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
     /* Peripheral clock enable */
-    __HAL_RCC_I2C1_CLK_ENABLE();
-  /* USER CODE BEGIN I2C1_MspInit 1 */
+    __HAL_RCC_I2C2_CLK_ENABLE();
+  /* USER CODE BEGIN I2C2_MspInit 1 */
 
-  /* USER CODE END I2C1_MspInit 1 */
+  /* USER CODE END I2C2_MspInit 1 */
 
   }
 
@@ -125,125 +132,25 @@ void HAL_I2C_MspInit(I2C_HandleTypeDef* hi2c)
 */
 void HAL_I2C_MspDeInit(I2C_HandleTypeDef* hi2c)
 {
-  if(hi2c->Instance==I2C1)
+  if(hi2c->Instance==I2C2)
   {
-  /* USER CODE BEGIN I2C1_MspDeInit 0 */
+  /* USER CODE BEGIN I2C2_MspDeInit 0 */
 
-  /* USER CODE END I2C1_MspDeInit 0 */
+  /* USER CODE END I2C2_MspDeInit 0 */
     /* Peripheral clock disable */
-    __HAL_RCC_I2C1_CLK_DISABLE();
+    __HAL_RCC_I2C2_CLK_DISABLE();
 
-    /**I2C1 GPIO Configuration
-    PB6     ------> I2C1_SCL
-    PB9     ------> I2C1_SDA
+    /**I2C2 GPIO Configuration
+    PB10     ------> I2C2_SCL
+    PB3     ------> I2C2_SDA
     */
-    HAL_GPIO_DeInit(Audio_SCL_GPIO_Port, Audio_SCL_Pin);
+    HAL_GPIO_DeInit(GPIOB, GPIO_PIN_10);
 
-    HAL_GPIO_DeInit(Audio_SDA_GPIO_Port, Audio_SDA_Pin);
+    HAL_GPIO_DeInit(GPIOB, GPIO_PIN_3);
 
-  /* USER CODE BEGIN I2C1_MspDeInit 1 */
+  /* USER CODE BEGIN I2C2_MspDeInit 1 */
 
-  /* USER CODE END I2C1_MspDeInit 1 */
-  }
-
-}
-
-/**
-* @brief I2S MSP Initialization
-* This function configures the hardware resources used in this example
-* @param hi2s: I2S handle pointer
-* @retval None
-*/
-void HAL_I2S_MspInit(I2S_HandleTypeDef* hi2s)
-{
-  GPIO_InitTypeDef GPIO_InitStruct = {0};
-  RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
-  if(hi2s->Instance==SPI2)
-  {
-  /* USER CODE BEGIN SPI2_MspInit 0 */
-
-  /* USER CODE END SPI2_MspInit 0 */
-
-  /** Initializes the peripherals clock
-  */
-    PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_I2S;
-    PeriphClkInitStruct.PLLI2S.PLLI2SN = 192;
-    PeriphClkInitStruct.PLLI2S.PLLI2SM = 4;
-    PeriphClkInitStruct.PLLI2S.PLLI2SR = 2;
-    if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
-    {
-      Error_Handler();
-    }
-
-    /* Peripheral clock enable */
-    __HAL_RCC_SPI2_CLK_ENABLE();
-
-    __HAL_RCC_GPIOC_CLK_ENABLE();
-    __HAL_RCC_GPIOB_CLK_ENABLE();
-    /**I2S2 GPIO Configuration
-    PC2     ------> I2S2_ext_SD
-    PC3     ------> I2S2_SD
-    PB10     ------> I2S2_CK
-    PB12     ------> I2S2_WS
-    */
-    GPIO_InitStruct.Pin = GPIO_PIN_2;
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-    GPIO_InitStruct.Alternate = GPIO_AF6_I2S2ext;
-    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-
-    GPIO_InitStruct.Pin = PDM_OUT_Pin;
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-    GPIO_InitStruct.Alternate = GPIO_AF5_SPI2;
-    HAL_GPIO_Init(PDM_OUT_GPIO_Port, &GPIO_InitStruct);
-
-    GPIO_InitStruct.Pin = CLK_IN_Pin|GPIO_PIN_12;
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-    GPIO_InitStruct.Alternate = GPIO_AF5_SPI2;
-    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-  /* USER CODE BEGIN SPI2_MspInit 1 */
-
-  /* USER CODE END SPI2_MspInit 1 */
-
-  }
-
-}
-
-/**
-* @brief I2S MSP De-Initialization
-* This function freeze the hardware resources used in this example
-* @param hi2s: I2S handle pointer
-* @retval None
-*/
-void HAL_I2S_MspDeInit(I2S_HandleTypeDef* hi2s)
-{
-  if(hi2s->Instance==SPI2)
-  {
-  /* USER CODE BEGIN SPI2_MspDeInit 0 */
-
-  /* USER CODE END SPI2_MspDeInit 0 */
-    /* Peripheral clock disable */
-    __HAL_RCC_SPI2_CLK_DISABLE();
-
-    /**I2S2 GPIO Configuration
-    PC2     ------> I2S2_ext_SD
-    PC3     ------> I2S2_SD
-    PB10     ------> I2S2_CK
-    PB12     ------> I2S2_WS
-    */
-    HAL_GPIO_DeInit(GPIOC, GPIO_PIN_2|PDM_OUT_Pin);
-
-    HAL_GPIO_DeInit(GPIOB, CLK_IN_Pin|GPIO_PIN_12);
-
-  /* USER CODE BEGIN SPI2_MspDeInit 1 */
-
-  /* USER CODE END SPI2_MspDeInit 1 */
+  /* USER CODE END I2C2_MspDeInit 1 */
   }
 
 }

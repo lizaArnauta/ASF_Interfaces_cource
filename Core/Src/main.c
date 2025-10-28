@@ -19,14 +19,12 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "usb_device.h"
-#include "rng.h"
-
-
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "ILI9341/ILI9341_GFX.h"
 #include "ILI9341/ILI9341_STM32_Driver.h"
+#include "VL53L0X/core/inc/vl53l0x_api.h"
 
 /* USER CODE END Includes */
 
@@ -71,6 +69,8 @@ void DWT_Init(void)
 #define TERM_CMD_RAW_ON "RAW ON"
 #define TERM_CMD_RAW_OFF "RAW OFF"
 
+#define VL53L0X_ADDR_8BIT (0x29 << 1)
+
 
 uint8_t usb_term_buffer[BUFFER_SIZE];
 uint8_t usb_buffer_index = 0;
@@ -89,6 +89,16 @@ char lat[16] = "";
 char lat_stat = '-';
 uint32_t uid = 0U;
 
+char distance[20] = "";
+
+
+typedef struct
+{
+  uint16_t chip_id;
+  uint16_t revision_id;
+  uint16_t device_address;
+} VL53L0X_Info_t;
+
 
 /* USER CODE END PD */
 
@@ -98,9 +108,7 @@ uint32_t uid = 0U;
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-I2C_HandleTypeDef hi2c1;
-
-I2S_HandleTypeDef hi2s2;
+I2C_HandleTypeDef hi2c2;
 
 SPI_HandleTypeDef hspi1;
 
@@ -108,6 +116,9 @@ UART_HandleTypeDef huart2;
 DMA_HandleTypeDef hdma_usart2_rx;
 
 /* USER CODE BEGIN PV */
+VL53L0X_RangingMeasurementData_t RangingData;
+VL53L0X_Dev_t  vl53l0x_c;
+VL53L0X_DEV Dev = &vl53l0x_c;
 
 char str_data[BUFFER_SIZE + 1u] = {0};
 
@@ -167,6 +178,12 @@ typedef struct
 {
 	NMEA_que_t que;
 } NMEA_t;
+
+typedef struct
+{
+	uint8_t addr[127];
+	uint8_t dev_count;
+} I2C_devices_list_t;
 
 NMEA_t nmea = {0};
 
@@ -365,17 +382,81 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 	}
 }
 
-void SystemClock_Config(void);
-static void MX_DMA_Init(void);
-static void MX_I2C1_Init(void);
-static void MX_I2S2_Init(void);
 
+I2C_devices_list_t* I2C_CheckBusDevices(void)
+{
+	static I2C_devices_list_t i2c_devices = {0};
+
+	for(uint32_t i = 0; i < 128U; i++)
+	{
+		uint16_t adress = i << 1;
+		if(HAL_I2C_IsDeviceReady(&hi2c2, adress, 1, HAL_MAX_DELAY) == HAL_OK)
+		{
+			i2c_devices.addr[i2c_devices.dev_count] = adress;
+			i2c_devices.dev_count++;
+		}
+	}
+	return &i2c_devices;
+}
+
+
+VL53L0X_Info_t Get_VL53L0X_Info_Raw(void)
+{
+    VL53L0X_Info_t sensor_info = {0};
+    uint8_t read_buffer = 0;
+    const uint16_t vl53_address = VL53L0X_ADDR_8BIT;
+    if (HAL_I2C_IsDeviceReady(&hi2c2, vl53_address, 1, HAL_MAX_DELAY) == HAL_OK)
+    {
+        sensor_info.device_address = vl53_address;
+        if (HAL_I2C_Mem_Read(&hi2c2, vl53_address, 0xC0, I2C_MEMADD_SIZE_8BIT, &read_buffer, 1, HAL_MAX_DELAY) == HAL_OK)
+        {
+            sensor_info.chip_id = read_buffer;
+        }
+        if (HAL_I2C_Mem_Read(&hi2c2, vl53_address, 0xC2, I2C_MEMADD_SIZE_8BIT, &read_buffer, 1, HAL_MAX_DELAY) == HAL_OK)
+        {
+            sensor_info.revision_id = read_buffer;
+        }
+    }
+    return sensor_info;
+}
+
+VL53L0X_Info_t my_lidar_info = {0};
+/* USER CODE END PV */
+
+/* Private function prototypes -----------------------------------------------*/
+void SystemClock_Config(void);
+void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
+void MX_SPI1_Init(void);
 static void MX_USART2_UART_Init(void);
+static void MX_I2C2_Init(void);
 /* USER CODE BEGIN PFP */
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void LidarInit() {
+	uint32_t refSpadCount;
+	uint8_t isApertureSpads;
+	uint8_t VhvSettings;
+	uint8_t PhaseCal;
+	VL53L0X_WaitDeviceBooted( Dev );
+	VL53L0X_DataInit( Dev );
+	VL53L0X_StaticInit( Dev );
+	VL53L0X_PerformRefCalibration(Dev, &VhvSettings, &PhaseCal);
+	VL53L0X_PerformRefSpadManagement(Dev, &refSpadCount, &isApertureSpads);
+	VL53L0X_SetDeviceMode(Dev, VL53L0X_DEVICEMODE_SINGLE_RANGING);
+
+	VL53L0X_SetLimitCheckEnable(Dev, VL53L0X_CHECKENABLE_SIGMA_FINAL_RANGE, 1);
+	VL53L0X_SetLimitCheckEnable(Dev, VL53L0X_CHECKENABLE_SIGNAL_RATE_FINAL_RANGE, 1);
+	VL53L0X_SetLimitCheckValue(Dev, VL53L0X_CHECKENABLE_SIGNAL_RATE_FINAL_RANGE, (FixPoint1616_t)(0.1*65536));
+	VL53L0X_SetLimitCheckValue(Dev, VL53L0X_CHECKENABLE_SIGMA_FINAL_RANGE, (FixPoint1616_t)(60*65536));
+	VL53L0X_SetMeasurementTimingBudgetMicroSeconds(Dev, 33000);
+	VL53L0X_SetVcselPulsePeriod(Dev, VL53L0X_VCSEL_PERIOD_PRE_RANGE, 18);
+	VL53L0X_SetVcselPulsePeriod(Dev, VL53L0X_VCSEL_PERIOD_FINAL_RANGE, 14);
+}
+
+
 void LCD_Init(void)
 {
 	uint16_t y_init_pos = 0u;
@@ -393,6 +474,10 @@ void LCD_Init(void)
 	y_init_pos += 16u;
 	ILI9341_Draw_Text("Lon: ", 7, y_init_pos, WHITE, 2, BLACK);
 	y_init_pos += 16u;
+    ILI9341_Draw_Text("Distance: ", 7, y_init_pos, WHITE, 2, BLACK);
+    y_init_pos += 16u;
+    ILI9341_Draw_Text("Lidar ID:", 7, y_init_pos, WHITE, 2, BLACK);
+    y_init_pos += 16u;
 }
 
 void LCD_Update(void)
@@ -400,6 +485,12 @@ void LCD_Update(void)
 	uint16_t y_init_pos = 16u;
 	const uint16_t x_update_pos = 10* 6 * 2;
 	char term_output[256] = {0};
+	float distanceInCm = (float)(RangingData.RangeMilliMeter)/10;
+	char distance_str[20];
+	uint16_t mm = RangingData.RangeMilliMeter;
+	uint16_t cm_whole = mm / 10;
+	uint16_t cm_frac = mm % 10;
+
 
 	(void)snprintf(term_output, 256, "%s", utc);
 	ILI9341_Draw_Text(term_output, x_update_pos, y_init_pos, WHITE, 2, BLACK);
@@ -417,9 +508,24 @@ void LCD_Update(void)
 	ILI9341_Draw_Text(term_output, x_update_pos, y_init_pos, WHITE, 2, BLACK);
 	y_init_pos += 16u;
 
+	if (mm == 0 || RangingData.RangeStatus != 0)
+	{
+	  (void)snprintf(distance_str, sizeof(distance_str), "N/A        ");
+	}
+	else
+	{
+       snprintf(distance_str, sizeof(distance_str), "%u.%u cm     ", cm_whole, cm_frac);
+	}
 
+	ILI9341_Draw_Text(distance_str, x_update_pos, y_init_pos, YELLOW, 2, BLACK);
+	y_init_pos += 16u;
 
+	(void)snprintf(term_output, 256, "0x%X   ", my_lidar_info.chip_id);
+	ILI9341_Draw_Text(term_output, x_update_pos, y_init_pos, YELLOW, 2, BLACK);
+	y_init_pos += 16u;
 }
+
+I2C_devices_list_t i2c_dev_list = {0};
 /* USER CODE END 0 */
 
 /**
@@ -445,7 +551,6 @@ int main(void)
 
   /* Configure the system clock */
   SystemClock_Config();
-  DWT_Init();
 
   /* USER CODE BEGIN SysInit */
 
@@ -454,20 +559,38 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_DMA_Init();
-  MX_I2C1_Init();
-  MX_I2S2_Init();
   MX_SPI1_Init();
   MX_USART2_UART_Init();
   MX_USB_DEVICE_Init();
+  MX_I2C2_Init();
   /* USER CODE BEGIN 2 */
 
   __enable_irq();
   rng_seed(DWT->CYCCNT);
   uid = xorshift32();
   (void)HAL_UARTEx_ReceiveToIdle_DMA(&huart2, dma_rx_buffer, BUFFER_SIZE);
+  Dev->I2cHandle = &hi2c2;
+  Dev->I2cDevAddr = VL53L0X_ADDR_8BIT;
+
+  i2c_dev_list = *(I2C_CheckBusDevices());
+  for (uint32_t i = 0; i < i2c_dev_list.dev_count; ++i)
+  {
+	  if (i2c_dev_list.addr[i] == VL53L0X_ADDR_8BIT)
+	  {
+		  HAL_GPIO_WritePin(Lidar_xshutdown_GPIO_Port, Lidar_xshutdown_Pin, GPIO_PIN_RESET);
+		  HAL_Delay(20);
+		  HAL_GPIO_WritePin(Lidar_xshutdown_GPIO_Port, Lidar_xshutdown_Pin, GPIO_PIN_SET);
+		  HAL_Delay(20);
+		  LidarInit();
+	  }
+  }
+
+  my_lidar_info = Get_VL53L0X_Info_Raw();
   ILI9341_Init();
   ILI9341_Fill_Screen(BLACK);
   ILI9341_Set_Rotation(SCREEN_HORIZONTAL_2);
+
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -477,25 +600,25 @@ int main(void)
   {
 
     /* USER CODE END WHILE */
-      if(is_received_new_data == true)
-      {
-   	   is_received_new_data = false;
 
-   	   ParseGpsData(dma_rx_buffer, data_size);
-   	   STAT_AddRecord(data_size);
-   	   LCD_Update();
-   	   NMEA_sentence_t* sentence_ptr = NMEA_ReadFromQueue();
-   	   char cdc_string[128] = {0};
-   	   char term_output[256] = {0};
+    /* USER CODE BEGIN 3 */
+    if(is_received_new_data == true)
+	  {
+	   is_received_new_data = false;
 
-   	   if (sentence_ptr != NULL && is_raw_on)
-   	   {
-   		   CDC_Transmit_FS(sentence_ptr->packet, strlen((char*)sentence_ptr->packet));
-   		   CDC_Transmit_FS(buffer, strlen(buffer));
+	   ParseGpsData(dma_rx_buffer, data_size);
+	   STAT_AddRecord(data_size);
 
-   	   }
+	   NMEA_sentence_t* sentence_ptr = NMEA_ReadFromQueue();
+	   char cdc_string[128] = {0};
+	   char term_output[256] = {0};
 
-      }
+   if (sentence_ptr != NULL && is_raw_on)
+   {
+	   CDC_Transmit_FS(sentence_ptr->packet, strlen((char*)sentence_ptr->packet));
+	   CDC_Transmit_FS(buffer, strlen(buffer));
+   }
+	   }
       if (usb_received_len > 0)
       {
    	   char term_output[256] = {0};
@@ -539,7 +662,19 @@ int main(void)
    	   usb_received_len = 0;
    	   memset(usb_term_buffer, 0, sizeof(usb_term_buffer));
       }
-    /* USER CODE BEGIN 3 */
+
+   VL53L0X_Error st = VL53L0X_PerformSingleRangingMeasurement(Dev, &RangingData);
+   if (st == VL53L0X_ERROR_NONE)
+   {
+
+   }
+   else
+   {
+
+   }
+
+   LCD_Update();
+   HAL_Delay(100);
   }
   /* USER CODE END 3 */
 }
@@ -590,70 +725,36 @@ void SystemClock_Config(void)
 }
 
 /**
-  * @brief I2C1 Initialization Function
+  * @brief I2C2 Initialization Function
   * @param None
   * @retval None
   */
-static void MX_I2C1_Init(void)
+static void MX_I2C2_Init(void)
 {
 
-  /* USER CODE BEGIN I2C1_Init 0 */
+  /* USER CODE BEGIN I2C2_Init 0 */
 
-  /* USER CODE END I2C1_Init 0 */
+  /* USER CODE END I2C2_Init 0 */
 
-  /* USER CODE BEGIN I2C1_Init 1 */
+  /* USER CODE BEGIN I2C2_Init 1 */
 
-  /* USER CODE END I2C1_Init 1 */
-  hi2c1.Instance = I2C1;
-  hi2c1.Init.ClockSpeed = 100000;
-  hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
-  hi2c1.Init.OwnAddress1 = 0;
-  hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
-  hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
-  hi2c1.Init.OwnAddress2 = 0;
-  hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
-  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
-  if (HAL_I2C_Init(&hi2c1) != HAL_OK)
+  /* USER CODE END I2C2_Init 1 */
+  hi2c2.Instance = I2C2;
+  hi2c2.Init.ClockSpeed = 100000;
+  hi2c2.Init.DutyCycle = I2C_DUTYCYCLE_2;
+  hi2c2.Init.OwnAddress1 = 0;
+  hi2c2.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+  hi2c2.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+  hi2c2.Init.OwnAddress2 = 0;
+  hi2c2.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+  hi2c2.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+  if (HAL_I2C_Init(&hi2c2) != HAL_OK)
   {
     Error_Handler();
   }
-  /* USER CODE BEGIN I2C1_Init 2 */
+  /* USER CODE BEGIN I2C2_Init 2 */
 
-  /* USER CODE END I2C1_Init 2 */
-
-}
-
-/**
-  * @brief I2S2 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_I2S2_Init(void)
-{
-
-  /* USER CODE BEGIN I2S2_Init 0 */
-
-  /* USER CODE END I2S2_Init 0 */
-
-  /* USER CODE BEGIN I2S2_Init 1 */
-
-  /* USER CODE END I2S2_Init 1 */
-  hi2s2.Instance = SPI2;
-  hi2s2.Init.Mode = I2S_MODE_MASTER_TX;
-  hi2s2.Init.Standard = I2S_STANDARD_PHILIPS;
-  hi2s2.Init.DataFormat = I2S_DATAFORMAT_16B;
-  hi2s2.Init.MCLKOutput = I2S_MCLKOUTPUT_DISABLE;
-  hi2s2.Init.AudioFreq = I2S_AUDIOFREQ_96K;
-  hi2s2.Init.CPOL = I2S_CPOL_LOW;
-  hi2s2.Init.ClockSource = I2S_CLOCK_PLL;
-  hi2s2.Init.FullDuplexMode = I2S_FULLDUPLEXMODE_ENABLE;
-  if (HAL_I2S_Init(&hi2s2) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN I2S2_Init 2 */
-
-  /* USER CODE END I2S2_Init 2 */
+  /* USER CODE END I2C2_Init 2 */
 
 }
 
@@ -776,6 +877,9 @@ void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOD, LD4_Pin|LD3_Pin|LD5_Pin|LD6_Pin
                           |Audio_RST_Pin, GPIO_PIN_RESET);
 
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(Lidar_xshutdown_GPIO_Port, Lidar_xshutdown_Pin, GPIO_PIN_SET);
+
   /*Configure GPIO pin : DATA_Ready_Pin */
   GPIO_InitStruct.Pin = DATA_Ready_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
@@ -801,6 +905,14 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(OTG_FS_PowerSwitchOn_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PDM_OUT_Pin */
+  GPIO_InitStruct.Pin = PDM_OUT_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.Alternate = GPIO_AF5_SPI2;
+  HAL_GPIO_Init(PDM_OUT_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PA0 PA1 PA4 */
   GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_4;
@@ -831,6 +943,13 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(OTG_FS_OverCurrent_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : Lidar_xshutdown_Pin */
+  GPIO_InitStruct.Pin = Lidar_xshutdown_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(Lidar_xshutdown_GPIO_Port, &GPIO_InitStruct);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */

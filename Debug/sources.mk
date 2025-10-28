@@ -23,6 +23,8 @@ C_DEPS :=
 # Every subdirectory with source files must be described here
 SUBDIRS := \
 Core/Src/ILI9341 \
+Core/Src/VL53L0X/core/src \
+Core/Src/VL53L0X/platform/src \
 Core/Src \
 Core/Startup \
 Drivers/STM32F4xx_HAL_Driver/Src \

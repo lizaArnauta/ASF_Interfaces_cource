@@ -1,5 +1,13 @@
-Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_i2s.o: \
- ../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_i2s.c \
+Core/Src/VL53L0X/core/src/vl53l0x_api.o: \
+ ../Core/Src/VL53L0X/core/src/vl53l0x_api.c \
+ ../Core/Src/VL53L0X/core/src/../../core/inc/vl53l0x_api.h \
+ ../Core/Src/VL53L0X/core/src/../../core/inc/vl53l0x_api_strings.h \
+ ../Core/Src/VL53L0X/core/src/../../core/inc/vl53l0x_def.h \
+ ../Core/Src/VL53L0X/core/src/../../core/inc/vl53l0x_device.h \
+ ../Core/Src/VL53L0X/core/src/../../core/inc/../../platform/inc/vl53l0x_types.h \
+ ../Core/Src/VL53L0X/core/src/../../core/inc/../../platform/inc/vl53l0x_platform.h \
+ ../Core/Src/VL53L0X/core/src/../../core/inc/../../platform/inc/../../core/inc/vl53l0x_def.h \
+ ../Core/Src/VL53L0X/core/src/../../core/inc/../../platform/inc/vl53l0x_platform_log.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h \
  ../Core/Inc/stm32f4xx_hal_conf.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_rcc.h \
@@ -25,15 +33,26 @@ Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_i2s.o: \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_flash_ramfunc.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_i2c.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_i2c_ex.h \
- ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_i2s.h \
- ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_i2s_ex.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_pwr.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_pwr_ex.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_spi.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_pcd.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_ll_usb.h \
- ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_pcd_ex.h
+ ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_pcd_ex.h \
+ ../Core/Src/VL53L0X/core/src/../../core/inc/vl53l0x_tuning.h \
+ ../Core/Src/VL53L0X/core/src/../../core/inc/vl53l0x_interrupt_threshold_settings.h \
+ ../Core/Src/VL53L0X/core/src/../../core/inc/vl53l0x_api_core.h \
+ ../Core/Src/VL53L0X/core/src/../../core/inc/vl53l0x_api_calibration.h \
+ ../Core/Src/VL53L0X/core/src/../../core/inc/vl53l0x_api_strings.h
+../Core/Src/VL53L0X/core/src/../../core/inc/vl53l0x_api.h:
+../Core/Src/VL53L0X/core/src/../../core/inc/vl53l0x_api_strings.h:
+../Core/Src/VL53L0X/core/src/../../core/inc/vl53l0x_def.h:
+../Core/Src/VL53L0X/core/src/../../core/inc/vl53l0x_device.h:
+../Core/Src/VL53L0X/core/src/../../core/inc/../../platform/inc/vl53l0x_types.h:
+../Core/Src/VL53L0X/core/src/../../core/inc/../../platform/inc/vl53l0x_platform.h:
+../Core/Src/VL53L0X/core/src/../../core/inc/../../platform/inc/../../core/inc/vl53l0x_def.h:
+../Core/Src/VL53L0X/core/src/../../core/inc/../../platform/inc/vl53l0x_platform_log.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h:
 ../Core/Inc/stm32f4xx_hal_conf.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_rcc.h:
@@ -59,8 +78,6 @@ Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_i2s.o: \
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_flash_ramfunc.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_i2c.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_i2c_ex.h:
-../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_i2s.h:
-../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_i2s_ex.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_pwr.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_pwr_ex.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_spi.h:
@@ -68,3 +85,8 @@ Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_i2s.o: \
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_pcd.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_ll_usb.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_pcd_ex.h:
+../Core/Src/VL53L0X/core/src/../../core/inc/vl53l0x_tuning.h:
+../Core/Src/VL53L0X/core/src/../../core/inc/vl53l0x_interrupt_threshold_settings.h:
+../Core/Src/VL53L0X/core/src/../../core/inc/vl53l0x_api_core.h:
+../Core/Src/VL53L0X/core/src/../../core/inc/vl53l0x_api_calibration.h:
+../Core/Src/VL53L0X/core/src/../../core/inc/vl53l0x_api_strings.h:
